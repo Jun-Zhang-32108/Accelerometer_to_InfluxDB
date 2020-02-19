@@ -1,7 +1,8 @@
 {
   "name": "AccelerometerApplication",
   "integrations": {
-    "capacitor": {}
+    "capacitor": {},
+    "cordova": {}
   },
   "type": "angular"
 }

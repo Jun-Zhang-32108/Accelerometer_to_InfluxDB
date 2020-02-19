@@ -1,20 +1,34 @@
 <ion-header [translucent]="true">
   <ion-toolbar>
     <ion-title>
-      Blank
+      Accelerometer
     </ion-title>
   </ion-toolbar>
 </ion-header>
 
 <ion-content [fullscreen]="true">
-  <ion-header collapse="condense">
-    <ion-toolbar>
-      <ion-title size="large">Blank</ion-title>
-    </ion-toolbar>
-  </ion-header>
 
-  <div id="container">
-    <strong>Ready to create an app?</strong>
-    <p>Start with Ionic <a target="_blank" rel="noopener noreferrer" href="https://ionicframework.com/docs/components">UI Components</a></p>
+  <div full>
+
+    <h1> X: {{x}} </h1>
   </div>
+  <div full>
+
+    <h1> Y: {{y}} </h1>
+  </div>
+
+  <div full>
+    <h1> Z: {{z}} </h1>
+  </div>
+
+  <div class="button_group" style="width:100%">
+    <button style="width:33.3%" (click)="startListening()"> Start Listening </button>
+    <button style="width:33.3%" (click)="stopListening()"> Stop Listening </button>
+    <button style="width:33.3%" (click)="resetCurrentData()"> Reset Current Data </button>
+  </div>
+
+  <div full>
+    <h1> Output: {{output}} </h1>
+  </div>
+  
 </ion-content>

@@ -29,3 +29,26 @@
 ion-content ion-toolbar {
   --background: translucent;
 }
+
+.button_group button {
+  background-color: white;
+  border: 1px solid black;
+  color: black;
+  padding: 10px 24px;
+  float: left;
+}
+
+.button_group button:not(:last-child) {
+  border-right: none;
+}
+
+.button_group:after {
+  content: "";
+  clear: both;
+  display: table;
+}
+
+.button_group button:hover {
+  background-color: gray;
+  color: white;
+}
