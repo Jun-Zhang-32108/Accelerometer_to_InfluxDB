@@ -42,7 +42,6 @@ export class HomePage {
   }
 
   async startListening() {
-    //window.alert("Started Listening");
     console.log("-----------BEGIN LISTENING-----------");
     this.file_path = this.file.externalRootDirectory;
     var option: DeviceMotionAccelerometerOptions =
@@ -53,6 +52,7 @@ export class HomePage {
       frequency: 50
     };
 
+    // Use user-defined filename if it is provided otherwise name the file by timestam+_Acceleration.csv
     if(this.flag==false)
     {
       if(this.outputPath){
@@ -64,6 +64,7 @@ export class HomePage {
       await this.file.createFile(this.file.externalRootDirectory, this.filename, true);
       this.flag=true;
       console.log('Creating file: ' + this.filename)
+      // The directory is actually the root path of Android's internal storage
       console.log('Path: '+this.file.externalRootDirectory)
       await this.file.writeFile(this.file.externalRootDirectory, this.filename, 'Timestamp,X,Y,Z \n', {replace: false, append: true})
       .then(() => {
@@ -91,14 +92,9 @@ export class HomePage {
       this.y = "" + (acceleration.y - this.gra_y).toFixed(4);
       this.z = "" + (acceleration.z - this.gra_z).toFixed(4);
       this.timestamp = acceleration.timestamp;
-      // this.output = " X: " + acceleration.x.toFixed(4) + " Y: " + acceleration.y.toFixed(4) + " Z: " + acceleration.z.toFixed(4);
-      // var log_to_show ="Time Stamp: " + acceleration.timestamp + "" + this.output
-      // console.log(log_to_show);
       this.log_to_write = this.timestamp + ',' +this.x+','+this.y+','+this.z+'\n'
-      // console.log(this.log_to_write);
       this.outputData += this.log_to_write
-      // console.log('Timestamp 2: '+acceleration.timestamp)
-      // this.file.writeFile(this.file.externalRootDirectory, this.filename, this.log_to_write, {replace: false, append: true});
+      // Write the data to the file every 5 seconds
       if((this.timestamp - this.startingTime) >= 5000)
       {
         // console.log('Start Writing. Time: '+Date.now());
@@ -115,7 +111,6 @@ export class HomePage {
 
   writeToFile() {
     return new Promise((resolve, reject) => {
-
       this.file.writeFile(this.file_path, this.filename, this.outputData, {replace: false, append: true})
       .then(() => {
           // console.log('Writing done! Time: '+ Date.now());
@@ -135,25 +130,11 @@ export class HomePage {
     //window.alert("Stopped Listening");
     this.id.unsubscribe();
     console.log("-----------STOP LISTENING-----------");
-    // console.log(this.file_path);
-    // console.log(this.filename);
-    // console.log(this.outputData);
-
-
-
-
   }
-  // inputValueToLable(){
-  //   // console.log(this.inputValue);
-  //   // this.lableText = this.inputValue;
-  // }
 
   resetCurrentData() {
-    //window.alert("Data Reset");
     this.id.unsubscribe();
-    // console.log('Start Writing. Time: '+Date.now());
     this.writeToFile();
-    // console.log('Clear FIFO. Time: '+Date.now());
     this.outputData=""
     this.startingTime = Date.now();
     this.x = "0";
