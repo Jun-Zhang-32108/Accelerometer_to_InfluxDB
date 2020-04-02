@@ -2,6 +2,7 @@ import { Component, DebugElement, SystemJsNgModuleLoader } from '@angular/core';
 import { DeviceMotion, DeviceMotionAccelerationData, DeviceMotionAccelerometerOptions } from '@ionic-native/device-motion/ngx';
 import { IonTextarea } from '@ionic/angular';
 import { Time } from '@angular/common';
+import { File } from '@ionic-native/file/ngx';
 
 @Component({
   selector: 'app-home',
@@ -13,53 +14,154 @@ export class HomePage {
   x: string;
   y: string;
   z: string;
-  output: string;
   id: any;
-  textbox: IonTextarea;
+  // textbox: IonTextarea;
+  timestamp: number;
+  outputPath: string;
+  flag: boolean;
+  filename: string;
+  log_to_write: string;
+  file_path: string;
+  outputData: string;
+  gra_x: number;
+  gra_y: number;
+  gra_z: number;
+  alpha: number;
+  startingTime: number;
 
-  constructor(public deviceMotion: DeviceMotion) {
+  constructor(public deviceMotion: DeviceMotion, public file: File) {
     this.x = "-";
     this.y = "-";
     this.z = "-";
-    this.output = "-";
+    this.flag = false;
+    this.outputData = '';
+    this.alpha = 0.8;
+    this.gra_x = 0;
+    this.gra_y = 0;
+    this.gra_z = 0;
   }
 
-  startListening() {
+  async startListening() {
     //window.alert("Started Listening");
     console.log("-----------BEGIN LISTENING-----------");
-
+    this.file_path = this.file.externalRootDirectory;
     var option: DeviceMotionAccelerometerOptions =
     {
       //This is the polling frequency. It is measured in ms.
+      //However, the data is not polling exactly in the defined frequency.
+      //The actual sampling frequency will be lower than the defined frequency due to the delay.
       frequency: 50
     };
 
-
-
+    if(this.flag==false)
+    {
+      if(this.outputPath){
+          this.filename = this.outputPath;
+      }
+      else{
+        this.filename = Date.now()+ '_Acceleration.csv';
+      }
+      await this.file.createFile(this.file.externalRootDirectory, this.filename, true);
+      this.flag=true;
+      console.log('Creating file: ' + this.filename)
+      console.log('Path: '+this.file.externalRootDirectory)
+      await this.file.writeFile(this.file.externalRootDirectory, this.filename, 'Timestamp,X,Y,Z \n', {replace: false, append: true})
+      .then(() => {
+          // console.log('Write successfully');
+      })
+      .catch((err) => {
+          console.log('Write failed! Err: ');
+          console.log(err)
+      });
+    }
+    this.startingTime = Date.now();
+    console.log('Starting time: '+this.startingTime)
     this.id = this.deviceMotion.watchAcceleration(option).subscribe((acceleration: DeviceMotionAccelerationData) => {
-      this.x = "" + acceleration.x.toFixed(4);
-      this.y = "" + acceleration.y.toFixed(4);
-      this.z = "" + acceleration.z.toFixed(4);
-      this.output = " X: " + acceleration.x.toFixed(4) + " Y: " + acceleration.y.toFixed(4) + " Z: " + acceleration.z.toFixed(4);
-      console.log("Time Stamp: " + acceleration.timestamp + "" + this.output);
+
+      // console.log('Getting Acceleration. ACC Time: '+acceleration.timestamp);
+      // console.log(acceleration)
+      // console.log('Getting Acceleration. Time: '+Date.now());
+      // console.log('Timestamp 1: '+acceleration.timestamp)
+      this.gra_x = this.alpha * this.gra_x + (1-this.alpha) * acceleration.x;
+      this.gra_y = this.alpha * this.gra_y + (1-this.alpha) * acceleration.y;
+      this.gra_z = this.alpha * this.gra_z + (1-this.alpha) * acceleration.z;
+      // console.log('gravity: '+this.gra_x +' '+this.gra_y+' '+this.gra_z );
+
+      this.x = "" + (acceleration.x - this.gra_x).toFixed(4);
+      this.y = "" + (acceleration.y - this.gra_y).toFixed(4);
+      this.z = "" + (acceleration.z - this.gra_z).toFixed(4);
+      this.timestamp = acceleration.timestamp;
+      // this.output = " X: " + acceleration.x.toFixed(4) + " Y: " + acceleration.y.toFixed(4) + " Z: " + acceleration.z.toFixed(4);
+      // var log_to_show ="Time Stamp: " + acceleration.timestamp + "" + this.output
+      // console.log(log_to_show);
+      this.log_to_write = this.timestamp + ',' +this.x+','+this.y+','+this.z+'\n'
+      // console.log(this.log_to_write);
+      this.outputData += this.log_to_write
+      // console.log('Timestamp 2: '+acceleration.timestamp)
+      // this.file.writeFile(this.file.externalRootDirectory, this.filename, this.log_to_write, {replace: false, append: true});
+      if((this.timestamp - this.startingTime) >= 5000)
+      {
+        // console.log('Start Writing. Time: '+Date.now());
+        this.outputData="";
+        this.writeToFile();
+        // console.log('Clear FIFO. Time: '+Date.now());
+
+        this.startingTime = Date.now();
+      }
     }
     );
   }
+
+
+  writeToFile() {
+    return new Promise((resolve, reject) => {
+
+      this.file.writeFile(this.file_path, this.filename, this.outputData, {replace: false, append: true})
+      .then(() => {
+          // console.log('Writing done! Time: '+ Date.now());
+          resolve('Write successfully!')
+      })
+      .catch((err) => {
+        reject(err);
+        // console.log(err)
+      });
+    });
+  }
+
+
+
 
   stopListening() {
     //window.alert("Stopped Listening");
     this.id.unsubscribe();
     console.log("-----------STOP LISTENING-----------");
+    // console.log(this.file_path);
+    // console.log(this.filename);
+    // console.log(this.outputData);
+
+
+
 
   }
+  // inputValueToLable(){
+  //   // console.log(this.inputValue);
+  //   // this.lableText = this.inputValue;
+  // }
 
   resetCurrentData() {
     //window.alert("Data Reset");
     this.id.unsubscribe();
+    // console.log('Start Writing. Time: '+Date.now());
+    this.writeToFile();
+    // console.log('Clear FIFO. Time: '+Date.now());
+    this.outputData=""
+    this.startingTime = Date.now();
     this.x = "0";
     this.y = "0";
     this.z = "0";
-    this.output = "-";
-  }
+    this.outputPath = "";
+    this.flag = false;
+    this.outputData ='';
 
+}
 }

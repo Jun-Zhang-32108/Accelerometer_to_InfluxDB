@@ -9,6 +9,7 @@ import { StatusBar } from '@ionic-native/status-bar/ngx';
 import { AppComponent } from './app.component';
 import { AppRoutingModule } from './app-routing.module';
 import { DeviceMotion, DeviceMotionAccelerationData } from '@ionic-native/device-motion/ngx';
+import { File } from '@ionic-native/file/ngx';
 
 
 @NgModule({
@@ -19,6 +20,7 @@ import { DeviceMotion, DeviceMotionAccelerationData } from '@ionic-native/device
     StatusBar,
     SplashScreen,
     DeviceMotion,
+    File,
     { provide: RouteReuseStrategy, useClass: IonicRouteStrategy }
   ],
   bootstrap: [AppComponent]

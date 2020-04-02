@@ -27,8 +27,23 @@
     <button style="width:33.3%" (click)="resetCurrentData()"> Reset Current Data </button>
   </div>
 
-  <div full>
-    <h1> Output: {{output}} </h1>
-  </div>
-  
+
+  <ion-content padding>
+  <ion-list>
+    <ion-item>
+      <ion-label stacked>Output Filename:</ion-label>
+      <ion-input type="text" [(ngModel)]="outputPath" text-right id="outputPath" ></ion-input>
+      <!-- <ion-input #myInput type="text" [(ngModel)]="inputValue"></ion-input> -->
+    </ion-item>
+    <!-- <ion-item>
+      <button ion-button (click)="inputValueToLable()">Submit filename</button>
+    </ion-item> -->
+    <!-- <ion-item>
+      <ion-label >
+      {{lableText}}
+      </ion-label>
+    </ion-item> -->
+  </ion-list>
+</ion-content>
+
 </ion-content>
