@@ -2,25 +2,15 @@ import { Component, DebugElement, SystemJsNgModuleLoader } from '@angular/core';
 import { DeviceMotion, DeviceMotionAccelerationData, DeviceMotionAccelerometerOptions } from '@ionic-native/device-motion/ngx';
 import { IonTextarea } from '@ionic/angular';
 import { Time } from '@angular/common';
-import { File } from '@ionic-native/file/ngx';
+// import { File } from '@ionic-native/file/ngx';  // No need if we don't write data to the file system.
 import { HTTP } from '@ionic-native/http/ngx';
-import {InfluxDB, Point, WriteApi} from '@influxdata/influxdb-client';
-// const enum WritePrecision {
-//   /** nanosecond */
-//   ns = 'ns',
-//   /* microsecond */
-//   us = 'us',
-//   /** millisecond */
-//   ms = 'ms',
-//   /* second */
-//   s = 's',
-// }
-// You can generate a Token from the "Tokens Tab" in the UI
-// const token_js = 'AML0PF2bP6vI49uSsEPA01cj7QEsA5D2M2WHB_sW9iRyVENNqwjquofPeqHcjLJLHusYABT43TldbTW1ecc68g=='
-// const client = new InfluxDB({url: 'https://eu-central-1-1.aws.cloud2.influxdata.com', token: token_js})
-// const bucketID = 'Rocla'
-// const writeApi = client.getWriteApi('1d952de0da8a8fe4', bucketID)
-// const url= 'https://eu-central-1-1.aws.cloud2.influxdata.com'
+
+// To send data to influxDB cloud, we need to know the token (for authorization), url of the server (depends on the location of the server and if
+// belongs to AWS of Google Cloud Platform), org and bucket ID. Token is sent in the header while others are sent with the requested URL. Their values
+// are as follow in this case :
+// token_js = 'AML0PF2bP6vI49uSsEPA01cj7QEsA5D2M2WHB_sW9iRyVENNqwjquofPeqHcjLJLHusYABT43TldbTW1ecc68g=='
+// url of the serer: 'https://eu-central-1-1.aws.cloud2.influxdata.com'
+// bucketID = 'Rocla'
 // const org= '1d952de0da8a8fe4'
 const headers = {'Authorization':'Token AML0PF2bP6vI49uSsEPA01cj7QEsA5D2M2WHB_sW9iRyVENNqwjquofPeqHcjLJLHusYABT43TldbTW1ecc68g=='};
 const url ='https://eu-central-1-1.aws.cloud2.influxdata.com/api/v2/write?org=1d952de0da8a8fe4&bucket=Rocla&precision=ms';
@@ -37,23 +27,21 @@ export class HomePage {
   y: string;
   z: string;
   id: any;
-  // textbox: IonTextarea;
   timestamp: number;
-  outputPath: string;
+  outputMeasurement: string;
   flag: boolean;
-  filename: string;
+  measurement: string;
   log_to_write: string;
-  // file_path: string;
   outputData: string;
   gra_x: number;
   gra_y: number;
   gra_z: number;
   alpha: number;
-  startingTime: number;
+  startingIndex: number;
   issaveData: boolean;
-  client:WriteApi;
+  listeningFlag: boolean;
 
-  constructor(public deviceMotion: DeviceMotion, public file: File, private http: HTTP) {
+  constructor(public deviceMotion: DeviceMotion, private http: HTTP) {
     this.x = "-";
     this.y = "-";
     this.z = "-";
@@ -64,13 +52,19 @@ export class HomePage {
     this.gra_y = 0;
     this.gra_z = 0;
     this.issaveData = false;
-    // this.buttonDisabled = false;
-    // this.client = new InfluxDB({url: 'https://eu-central-1-1.aws.cloud2.influxdata.com', token: token_js}).getWriteApi('1d952de0da8a8fe4', bucketID);
+    this.listeningFlag = false;
   }
 
   async startListening() {
+    // There is a bug when pressing the startListening button twice.
+    // So we use variable listeningFlag to know if startListening is pressed before.
+    // If so, we exit the function otherwise we proceed.
+    if(this.listeningFlag == true)
+    {
+      return;
+    }
+    this.listeningFlag = true;
     console.log("-----------BEGIN LISTENING-----------");
-    // this.file_path = this.file.externalRootDirectory;
     var option: DeviceMotionAccelerometerOptions =
     {
       //This is the polling frequency. It is measured in ms.
@@ -79,34 +73,28 @@ export class HomePage {
       frequency: 50
     };
 
-    // Use user-defined filename if it is provided otherwise name the file by timestam+_Acceleration.csv
+    // Use user-defined name of the measurement if it is provided otherwise name the file by "acceleration"
+    // Measurement is an important concept in InfluxDB. It can be considered as the table name.
+    // this.flag == false means the measurement name is not set.
     if(this.flag==false && this.issaveData == true)
     {
-      if(this.outputPath){
-          this.filename = this.outputPath;
+      if(this.outputMeasurement){
+          this.measurement = this.outputMeasurement;
       }
       else{
-        this.filename = 'acceleration';
+        this.measurement = 'acceleration';
       }
-    //   await this.file.createFile(this.file.externalRootDirectory, this.filename, true);
+      // Measurement name is set.
       this.flag=true;
-      console.log('Measurement: ' + this.filename)
-    //   // The directory is actually the root path of Android's internal storage
-    //   console.log('Path: '+this.file.externalRootDirectory)
-    //   await this.file.writeFile(this.file.externalRootDirectory, this.filename, 'Timestamp,X,Y,Z \n', {replace: false, append: true})
-    //   .then(() => {
-    //       // console.log('Write successfully');
-    //   })
-    //   .catch((err) => {
-    //       console.log('Write failed! Err: ');
-    //       console.log(err)
-    //   });
+      console.log('Measurement: ' + this.measurement)
     }
 
-    this.startingTime = 0;
-    console.log('Starting time: '+this.startingTime)
+    this.startingIndex = 0;
+    console.log('Starting index: '+this.startingIndex)
     this.id = this.deviceMotion.watchAcceleration(option).subscribe((acceleration: DeviceMotionAccelerationData) => {
 
+      // Use low pass filter to get the value of gravity in 3 axises and remove them from the value.
+      // This method is recommended of Google Official Document: https://developer.android.com/reference/android/hardware/SensorEvent.html
       this.gra_x = this.alpha * this.gra_x + (1-this.alpha) * acceleration.x;
       this.gra_y = this.alpha * this.gra_y + (1-this.alpha) * acceleration.y;
       this.gra_z = this.alpha * this.gra_z + (1-this.alpha) * acceleration.z;
@@ -116,33 +104,24 @@ export class HomePage {
       this.y = "" + (acceleration.y - this.gra_y).toFixed(4);
       this.z = "" + (acceleration.z - this.gra_z).toFixed(4);
       this.timestamp = acceleration.timestamp;
-      // this.log_to_write = this.timestamp + ',' +this.x+','+this.y+','+this.z+'\n'
 
-      this.log_to_write = String(this.filename+',device=Android '+'x='+this.x+',y='+this.y+',z='+this.z+' '+this.timestamp+'\n'); // Line protocol string
+      // One sample of the acceleration data to be sent to the influxdb. It follows the InfluxDB line protocol syntax:
+      // https://docs.influxdata.com/influxdb/v1.7/write_protocols/line_protocol_tutorial/
+      this.log_to_write = String(this.measurement+',device=Android '+'x='+this.x+',y='+this.y+',z='+this.z+' '+this.timestamp+'\n'); // Line protocol string
+      // Here we use variable outputData as a buffer to store the samples which will be sent to influxdb in the future.
+      // In this way, we can achieve batch update and it can reduce the pressure brought by frequent http requests
       this.outputData += this.log_to_write;
-      this.startingTime += 1;
-      // const params = {"data":String('acceleration,device=Android '+'x='+this.x+',y='+this.y+',z='+this.z+' '+this.timestamp)};
-      //
-      // console.log(params);
-      // console.log(JSON.stringify(params));
+      // We are counting the index of the samples, when it reachs a limit, the samples will be sent to the influxdb cloud in a batch.
+      this.startingIndex += 1;
 
-      // this.client.writeRecord(data);
-      // writeApi.writeRecord(data)
-      // Write the data to the influxDB in a batch style with 100 records.
-      if(this.startingTime >= 100 && this.issaveData == true)
+      // Write the data to the influxDB in a batch style with 100 records. We can also set the limit higher such as 200 or more.
+      // If the sampling period is 50ms, we send the data to influxdb every 5 second.
+      // issaveData is a flag to indicate if we want to send the data to influxDB or now.
+      if(this.startingIndex >= 100 && this.issaveData == true)
       {
-      //   console.log('Start Writing. Time: '+Date.now());
-      //   // this.client.flush()
-      //   writeApi.flush()
-      //   .catch(e => {
-      //       console.error(e)
-      //       console.log('\nFlush ERROR')
-      //   });
-      // //   this.writeToFile();
-      //   console.log('Clear FIFO. Time: '+Date.now());
-      // //
-      this.http.setHeader('*','Content-Type','plain/text');
-      this.http.setDataSerializer('utf8');
+            // We need send the data in plain text .
+            this.http.setHeader('*','Content-Type','plain/text');
+            this.http.setDataSerializer('utf8');
 
             console.log('Sending data: '+Date.now());
             this.http.post(url, this.outputData, headers )
@@ -152,7 +131,8 @@ export class HomePage {
             .catch(error => {
               console.log(error)
             })
-            this.startingTime = 0
+            // Reset the index and buffer.
+            this.startingIndex = 0
             this.outputData="";
       }
 
@@ -160,34 +140,22 @@ export class HomePage {
     );
   }
 
-  // //Functions for writing to file
-  // writeToFile() {
-  //   return new Promise((resolve, reject) => {
-  //     this.file.writeFile(this.file_path, this.filename, this.outputData, {replace: false, append: true})
-  //     .then(() => {
-  //         // console.log('Writing done! Time: '+ Date.now());
-  //         resolve('Write successfully!')
-  //     })
-  //     .catch((err) => {
-  //       reject(err);
-  //       // console.log(err)
-  //     });
-  //   });
-  // }
-
+  // To retrive the value of button "Send data" in the html page
   saveData(){
     this.issaveData = true;
-    // this.buttonDisabled = true;
   }
 
+  // To decide if the "Send data" button will be disabled or not.
+  // We disable the button if user presses the "Send data" buttion.
   checkIsEnabled() {
          return this.issaveData;
      }
 
   stopListening() {
-    //window.alert("Stopped Listening");
     this.id.unsubscribe();
+    this.listeningFlag = false; // We can now release the button "Start Listening" to be pressed again.
     console.log("-----------STOP LISTENING-----------");
+    // If users presses the 'Stop Listening' button, we stop listening and flush the data from the buffer to influxdb.
     if( this.issaveData == true && this.outputData)
     {
       this.http.setHeader('*','Content-Type','plain/text');
@@ -196,20 +164,20 @@ export class HomePage {
       this.http.post(url, this.outputData, headers )
       .then(() => {
         console.log('Finish sending data: '+Date.now())
+        this.startingIndex = 0;
+        this.outputData ='';
       })
       .catch(error => {
         console.log(error)
       })
     }
-    this.issaveData = false;
-    this.startingTime = 0;
-    this.outputData ='';
-
-
   }
 
   resetCurrentData() {
     this.id.unsubscribe();
+    this.listeningFlag = false; // We can now release the button "Start Listening" to be pressed again.
+    console.log("-----------Reset Data-----------");
+    // If users presses the 'Reset Current Data' button, we reset everything and flush the data from the buffer to influxdb.
     if( this.issaveData == true && this.outputData)
     {
       this.http.setHeader('*','Content-Type','plain/text');
@@ -223,25 +191,13 @@ export class HomePage {
         console.log(error)
       })
     }
-    // if(this.issaveData == true){
-    // // this.client.flush()
-    // writeApi.flush()
-    //     .then(() => {
-    //         console.log('FINISHED')
-    //     })
-    //     .catch(e => {
-    //         console.error(e)
-    //         console.log('\nFinished ERROR')
-    //     })
-    //   }
-    this.startingTime = 0;
+    this.startingIndex = 0;
+    this.outputData ='';
     this.x = "0";
     this.y = "0";
     this.z = "0";
-    this.outputPath = "";
+    this.outputMeasurement = "";
     this.flag = false;
-    this.outputData ='';
     this.issaveData = false;
-    // this.buttonDisabled = false;
 }
 }

@@ -31,12 +31,11 @@
   <ion-content padding>
   <ion-list>
     <ion-item>
-      <ion-label stacked>Output Filename:</ion-label>
-      <ion-input type="text" [(ngModel)]="outputPath" text-right id="outputPath" ></ion-input>
-      <!-- <ion-input #myInput type="text" [(ngModel)]="inputValue"></ion-input> -->
+      <ion-label stacked>Measurement Name:</ion-label>
+      <ion-input type="text" [(ngModel)]="outputMeasurement" text-right id="outputMeasurement" ></ion-input>
     </ion-item>
     <ion-item>
-      <button ion-button [disabled]="checkIsEnabled()" (click)="saveData()">Save data</button>
+      <button ion-button [disabled]="checkIsEnabled()" (click)="saveData()">Send data</button>
     </ion-item>
     <!-- <ion-item>
       <ion-label >
