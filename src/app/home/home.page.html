@@ -35,9 +35,9 @@
       <ion-input type="text" [(ngModel)]="outputPath" text-right id="outputPath" ></ion-input>
       <!-- <ion-input #myInput type="text" [(ngModel)]="inputValue"></ion-input> -->
     </ion-item>
-    <!-- <ion-item>
-      <button ion-button (click)="inputValueToLable()">Submit filename</button>
-    </ion-item> -->
+    <ion-item>
+      <button ion-button [disabled]="checkIsEnabled()" (click)="saveData()">Save data</button>
+    </ion-item>
     <!-- <ion-item>
       <ion-label >
       {{lableText}}
