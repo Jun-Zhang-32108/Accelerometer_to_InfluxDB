@@ -103,7 +103,7 @@ export class HomePage {
       this.x = "" + (acceleration.x - this.gra_x).toFixed(4);
       this.y = "" + (acceleration.y - this.gra_y).toFixed(4);
       this.z = "" + (acceleration.z - this.gra_z).toFixed(4);
-      this.timestamp = acceleration.timestamp;
+      this.timestamp = acceleration.timestamp.toFixed(0);
 
       // One sample of the acceleration data to be sent to the influxdb. It follows the InfluxDB line protocol syntax:
       // https://docs.influxdata.com/influxdb/v1.7/write_protocols/line_protocol_tutorial/
@@ -124,6 +124,7 @@ export class HomePage {
             this.http.setDataSerializer('utf8');
 
             console.log('Sending data: '+Date.now());
+            // console.log('test');
             this.http.post(url, this.outputData, headers )
             .then(() => {
               console.log('Finish sending data: '+Date.now())
