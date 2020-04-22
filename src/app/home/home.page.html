@@ -35,6 +35,14 @@
       <ion-input type="text" [(ngModel)]="outputMeasurement" text-right id="outputMeasurement" ></ion-input>
     </ion-item>
     <ion-item>
+      <ion-label stacked>Threshold( Unit: m/s^2):</ion-label>
+      <ion-input type="number" [(ngModel)]="selfDefinedThreshold" text-right id="selfDefinedThreshold" ></ion-input>
+    </ion-item>
+    <ion-item>
+      <ion-label stacked>Interval( Unit: sec):</ion-label>
+      <ion-input type="number" [(ngModel)]="selfDefinedInterval" text-right id="selfDefinedInterval" ></ion-input>
+    </ion-item>
+    <ion-item>
       <button ion-button [disabled]="checkIsEnabled()" (click)="saveData()">Send data</button>
     </ion-item>
     <!-- <ion-item>

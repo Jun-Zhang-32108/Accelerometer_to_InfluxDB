@@ -4,6 +4,7 @@ import { IonTextarea } from '@ionic/angular';
 import { Time } from '@angular/common';
 // import { File } from '@ionic-native/file/ngx';  // No need if we don't write data to the file system.
 import { HTTP } from '@ionic-native/http/ngx';
+import CBuffer from 'cbuffer' // A package for circular buffer. To install it, simply use 'npm install CBuffer --save'
 
 // To send data to influxDB cloud, we need to know the token (for authorization), url of the server (depends on the location of the server and if
 // belongs to AWS of Google Cloud Platform), org and bucket ID. Token is sent in the header while others are sent with the requested URL. Their values
@@ -40,11 +41,14 @@ export class HomePage {
   startingIndex: number;
   issaveData: boolean;
   listeningFlag: boolean;
+  selfDefinedThreshold: number; 
+  startingTime: number;
+  selfDefinedInterval: number;
 
   constructor(public deviceMotion: DeviceMotion, private http: HTTP) {
-    this.x = "-";
-    this.y = "-";
-    this.z = "-";
+    this.x = "0";
+    this.y = "0";
+    this.z = "0";
     this.flag = false;
     this.outputData = '';
     this.alpha = 0.8;
@@ -90,7 +94,28 @@ export class HomePage {
     }
 
     this.startingIndex = 0;
-    console.log('Starting index: '+this.startingIndex)
+    this.startingTime = Date.now(); // Record the starting time here because we will discard the samples collected in the first 3 seconds.
+    // console.log('Starting index: '+this.startingIndex)
+    // console.log('StartingTime: '+this.startingTime);
+
+    // Interval is an important metrics for detecting the collision. If the accleration goes beyond the threshold for a while, namely for this interval,
+    // we suspect it is a collision. Since we are sampling the data in a period of 50 ms. Interval = window * 0.05, unit is second. 
+    if(this.selfDefinedInterval){
+      var window = Math.floor(this.selfDefinedInterval / 0.05);
+    }
+    else{
+      var window = 6;
+    }
+    var x_Buffer = new CBuffer(window);
+    var y_Buffer = new CBuffer(window);
+    var z_Buffer = new CBuffer(window);
+    if(this.selfDefinedThreshold){
+      var threshold = this.selfDefinedThreshold;
+    }
+    else{
+      var threshold = 10.0;
+    }
+
     this.id = this.deviceMotion.watchAcceleration(option).subscribe((acceleration: DeviceMotionAccelerationData) => {
 
       // Use low pass filter to get the value of gravity in 3 axises and remove them from the value.
@@ -105,14 +130,32 @@ export class HomePage {
       this.z = "" + (acceleration.z - this.gra_z).toFixed(4);
       this.timestamp = acceleration.timestamp.toFixed(0);
 
+      // Filling the circular buffer (first-in-first-out)
+      x_Buffer.push(Math.abs(parseFloat(this.x)));
+      y_Buffer.push(Math.abs(parseFloat(this.y)));
+      z_Buffer.push(Math.abs(parseFloat(this.z)));
+      
+      if(Math.min.apply(Math, x_Buffer.toArray())>threshold || Math.min.apply(Math, y_Buffer.toArray())>threshold || Math.min.apply(Math, z_Buffer.toArray())>threshold){
+        console.log('Collision detected! Threshold: '+threshold+' Acceleration: '+'x='+this.x+',y='+this.y+',z='+this.z+' '+this.timestamp+'\n');      
+      }
+      // console.log('Min: '+x_Buffer.toArray());
+      // console.log('Threshold: '+threshold+ ' Interval: '+window);
+      
+
+
       // One sample of the acceleration data to be sent to the influxdb. It follows the InfluxDB line protocol syntax:
       // https://docs.influxdata.com/influxdb/v1.7/write_protocols/line_protocol_tutorial/
       this.log_to_write = String(this.measurement+',device=Android '+'x='+this.x+',y='+this.y+',z='+this.z+' '+this.timestamp+'\n'); // Line protocol string
       // Here we use variable outputData as a buffer to store the samples which will be sent to influxdb in the future.
       // In this way, we can achieve batch update and it can reduce the pressure brought by frequent http requests
+
+      // We discard the data collected in the first 3 seconds because the low pass filter has not converged before that.
+      if((this.timestamp - this.startingTime)> 3000){
       this.outputData += this.log_to_write;
+
       // We are counting the index of the samples, when it reachs a limit, the samples will be sent to the influxdb cloud in a batch.
       this.startingIndex += 1;
+      }
 
       // Write the data to the influxDB in a batch style with 100 records. We can also set the limit higher such as 200 or more.
       // If the sampling period is 50ms, we send the data to influxdb every 5 second.
@@ -200,5 +243,7 @@ export class HomePage {
     this.outputMeasurement = "";
     this.flag = false;
     this.issaveData = false;
+    this.selfDefinedThreshold = 10.0; // Reset the values to default values.
+    this.selfDefinedInterval = 0.3; // // Reset the values to default values.
 }
 }
