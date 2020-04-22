@@ -31,7 +31,7 @@ export class HomePage {
   timestamp: number;
   outputMeasurement: string;
   flag: boolean;
-  measurement: string;
+  // measurement: string;
   log_to_write: string;
   outputData: string;
   gra_x: number;
@@ -57,6 +57,9 @@ export class HomePage {
     this.gra_z = 0;
     this.issaveData = false;
     this.listeningFlag = false;
+    this.selfDefinedInterval = 0.3;
+    this.selfDefinedThreshold = 10;
+    this.outputMeasurement = 'acceleration';
   }
 
   async startListening() {
@@ -82,15 +85,15 @@ export class HomePage {
     // this.flag == false means the measurement name is not set.
     if(this.flag==false && this.issaveData == true)
     {
-      if(this.outputMeasurement){
-          this.measurement = this.outputMeasurement;
-      }
-      else{
-        this.measurement = 'acceleration';
-      }
+      // if(this.outputMeasurement){
+          // this.measurement = this.outputMeasurement;
+      // }
+      // else{
+        // this.measurement = 'acceleration';
+      // }
       // Measurement name is set.
       this.flag=true;
-      console.log('Measurement: ' + this.measurement)
+      console.log('Measurement: ' + this.outputMeasurement);
     }
 
     this.startingIndex = 0;
@@ -100,21 +103,21 @@ export class HomePage {
 
     // Interval is an important metrics for detecting the collision. If the accleration goes beyond the threshold for a while, namely for this interval,
     // we suspect it is a collision. Since we are sampling the data in a period of 50 ms. Interval = window * 0.05, unit is second. 
-    if(this.selfDefinedInterval){
-      var window = Math.floor(this.selfDefinedInterval / 0.05);
-    }
-    else{
-      var window = 6;
-    }
+    // if(this.selfDefinedInterval){
+    var window = Math.floor(this.selfDefinedInterval / 0.05);
+    // }
+    // else{
+      // var window = 6;
+    // }
     var x_Buffer = new CBuffer(window);
     var y_Buffer = new CBuffer(window);
     var z_Buffer = new CBuffer(window);
-    if(this.selfDefinedThreshold){
-      var threshold = this.selfDefinedThreshold;
-    }
-    else{
-      var threshold = 10.0;
-    }
+    // if(this.selfDefinedThreshold){
+    var threshold = this.selfDefinedThreshold;
+    // }
+    // else{
+      // var threshold = 10.0;
+    // }
 
     this.id = this.deviceMotion.watchAcceleration(option).subscribe((acceleration: DeviceMotionAccelerationData) => {
 
@@ -145,7 +148,7 @@ export class HomePage {
 
       // One sample of the acceleration data to be sent to the influxdb. It follows the InfluxDB line protocol syntax:
       // https://docs.influxdata.com/influxdb/v1.7/write_protocols/line_protocol_tutorial/
-      this.log_to_write = String(this.measurement+',device=Android '+'x='+this.x+',y='+this.y+',z='+this.z+' '+this.timestamp+'\n'); // Line protocol string
+      this.log_to_write = String(this.outputMeasurement+',device=Android '+'x='+this.x+',y='+this.y+',z='+this.z+' '+this.timestamp+'\n'); // Line protocol string
       // Here we use variable outputData as a buffer to store the samples which will be sent to influxdb in the future.
       // In this way, we can achieve batch update and it can reduce the pressure brought by frequent http requests
 
@@ -240,7 +243,7 @@ export class HomePage {
     this.x = "0";
     this.y = "0";
     this.z = "0";
-    this.outputMeasurement = "";
+    this.outputMeasurement = "acceleration";
     this.flag = false;
     this.issaveData = false;
     this.selfDefinedThreshold = 10.0; // Reset the values to default values.
